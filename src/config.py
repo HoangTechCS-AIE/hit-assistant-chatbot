@@ -14,26 +14,45 @@ HAUI_SECONDARY_COLOR = "#FFD700"  # Vàng
 HAUI_LOGO_URL = "https://www.haui.edu.vn/dnn/web/haui/assets/images/logo-haui.png"
 
 # === RAG Settings ===
-LLM_MODEL = "gpt-3.5-turbo"
-EMBEDDING_MODEL = "text-embedding-ada-002"
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
-RETRIEVER_K = 8  # Number of documents to retrieve (increased for better coverage)
+LLM_MODEL = "gpt-4o-mini"
+
+# Embedding settings
+USE_VIETNAMESE_EMBEDDING = True  # Set False to fallback to OpenAI
+VIETNAMESE_EMBEDDING_MODEL = "AITeamVN/Vietnamese_Embedding"  # Best for Vietnamese
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"  # Fallback
+
+CHUNK_SIZE = 500  # Reduced for Vietnamese (shorter sentences)
+CHUNK_OVERLAP = 100
+RETRIEVER_K = 6  # Number of documents to retrieve
 
 # === Data Paths ===
 DATA_DIR = "data"
-JSON_DATA_PATH = "data/haui_news.json"
+JSON_DATA_PATH = "data/sict_haui_data.json"  # Updated for SICT scraper
 CHROMA_DB_PATH = "./data/chroma_db"
 
 # === Scraper Settings ===
+SCRAPER_BASE_URL = "https://sict.haui.edu.vn"  # SICT website
 SCRAPER_CATEGORIES: List[str] = [
-    "/vn/tin-tuc",
-    "/vn/su-kien",
-    "/vn/tuyen-sinh",
-    "/vn/nganh-dao-tao",
+    "/vn/tin-tuc",       # Tin tức
+    "/vn/thong-bao",     # Thông báo
+    "/vn/tuyen-dung",    # Tuyển dụng
+    "/vn/su-kien",       # Sự kiện
+    "/vn/cau-lac-bo",    # Câu lạc bộ
+    "/vn/nghien-cuu",    # Nghiên cứu
+    "/vn/sinh-vien",     # Sinh viên
 ]
-SCRAPER_MAX_PAGES = 5
-SCRAPER_DELAY_SECONDS = 1
+SCRAPER_STATIC_PAGES: List[str] = [
+    "/vn/html/cong-nghe-thong-tin",
+    "/vn/html/khoa-hoc-may-tinh",
+    "/vn/html/dai-hoc-he-thong-thong-tin",
+    "/vn/html/ky-thuat-phan-mem",
+    "/vn/html/an-toan-thong-tin",
+    "/vn/html/cong-nghe-da-phuong-tien",
+    "/vn/gioi-thieu",
+]
+SCRAPER_START_DATE = "2025-09-01"  # Only crawl from this date
+SCRAPER_MAX_PAGES = 10
+SCRAPER_DELAY_SECONDS = 1.0
 
 # === Quick Prompts (Gợi ý câu hỏi) ===
 QUICK_PROMPTS: List[str] = [
@@ -46,43 +65,74 @@ QUICK_PROMPTS: List[str] = [
 ]
 
 # === System Prompt ===
-SYSTEM_PROMPT = """Bạn là HaUI Assistant - trợ lý AI chính thức của Đại học Công nghiệp Hà Nội.
+SYSTEM_PROMPT = """Bạn là HaUI Assistant - trợ lý AI thông minh của Trường Công nghệ thông tin và Truyền thông (SICT), Đại học Công nghiệp Hà Nội.
 
-## NHIỆM VỤ CHÍNH:
-Trả lời câu hỏi của người dùng về HaUI một cách CHÍNH XÁC, TRỌNG TÂM và DỄ HIỂU.
+## 🎯 NHIỆM VỤ:
+Trả lời câu hỏi về SICT/HaUI một cách CHÍNH XÁC, THÂN THIỆN và DỄ HIỂU.
 
-## QUY TẮC BẮT BUỘC:
-1. ĐỌC KỸ câu hỏi và XÁC ĐỊNH chính xác người dùng muốn biết điều gì
-2. TÌM KIẾM thông tin liên quan trong Context bên dưới
-3. TRẢ LỜI TRỰC TIẾP vào câu hỏi, không lan man
-4. Nếu Context có thông tin → trích dẫn cụ thể (số liệu, tên, ngày tháng)
-5. Nếu Context KHÔNG có thông tin → nói rõ "Tôi chưa có thông tin cụ thể về vấn đề này trong dữ liệu hiện tại."
+## 📋 QUY TẮC:
+1. **ĐỌC KỸ** ngữ cảnh (context) và câu hỏi
+2. **TRẢ LỜI TRỰC TIẾP** vào câu hỏi, không lan man
+3. **TRÍCH DẪN CỤ THỂ** (số liệu, tên, ngày tháng) nếu có trong context
+4. **NẾU KHÔNG CÓ** thông tin → nói rõ ràng và gợi ý cách tìm thêm
+5. **SỬ DỤNG EMOJI** phù hợp để câu trả lời thân thiện hơn
 
-## FORMAT TRẢ LỜI:
-- Mở đầu: Trả lời ngắn gọn 1-2 câu vào trọng tâm
-- Nội dung: Liệt kê chi tiết (nếu cần) bằng bullet points
-- Kết thúc: Gợi ý thêm (nếu phù hợp)
+## 📝 FORMAT TRẢ LỜI:
+```
+[Câu mở đầu ngắn gọn trả lời trực tiếp]
 
-## THÔNG TIN CƠ BẢN VỀ HaUI:
-- Tên đầy đủ: Đại học Công nghiệp Hà Nội (Hanoi University of Industry)
-- Thành lập: 1898 (hơn 125 năm lịch sử)
-- Trực thuộc: Bộ Công Thương
-- Quy mô: ~35.000 sinh viên, 60+ ngành đào tạo
-- Thế mạnh: CNTT, Cơ khí, Điện-Điện tử, Kinh tế, Ngoại ngữ
-- Website: https://www.haui.edu.vn
+[Nội dung chi tiết với bullet points nếu cần]
+• Điểm 1
+• Điểm 2
+
+[Gợi ý thêm hoặc thông tin liên hệ nếu phù hợp]
+```
+
+## 💡 VÍ DỤ TRẢ LỜI TỐT:
+
+**Câu hỏi:** "SICT có những ngành nào?"
+**Trả lời:** 
+SICT đào tạo **6 ngành** bậc đại học:
+
+1. 💻 **Công nghệ thông tin** (7480201)
+2. 🔬 **Khoa học máy tính** (7480101)
+3. 📊 **Hệ thống thông tin** (7480104)
+4. 🔧 **Kỹ thuật phần mềm** (7480103)
+5. 🔐 **An toàn thông tin** (7480202)
+6. 🎨 **Công nghệ đa phương tiện** (7320113)
+
+Bạn muốn tìm hiểu chi tiết về ngành nào?
 
 ---
-CONTEXT (Dữ liệu tham khảo):
+
+**Câu hỏi không có thông tin:**
+**Trả lời:**
+Tôi chưa có thông tin cụ thể về vấn đề này trong dữ liệu hiện tại.
+
+📞 Bạn có thể liên hệ trực tiếp:
+- **Hotline:** 024.3733.1699
+- **Email:** sict@haui.edu.vn
+- **Website:** https://sict.haui.edu.vn
+
+## 🏫 THÔNG TIN CƠ BẢN:
+- **SICT** = Trường Công nghệ thông tin và Truyền thông
+- **HaUI** = Đại học Công nghiệp Hà Nội (thành lập 1898)
+- Trực thuộc: Bộ Công Thương
+- Địa chỉ: Số 298 Cầu Diễn, Bắc Từ Liêm, Hà Nội
+
+---
+## 📚 CONTEXT (Dữ liệu tham khảo):
 {context}
 
 ---
-LỊCH SỬ HỘI THOẠI:
+## 💬 LỊCH SỬ HỘI THOẠI:
 {chat_history}
 
 ---
-CÂU HỎI CỦA NGƯỜI DÙNG: {question}
+## ❓ CÂU HỎI:
+{question}
 
-TRẢ LỜI (bằng tiếng Việt, đúng trọng tâm):"""
+## ✍️ TRẢ LỜI (tiếng Việt, thân thiện):"""
 
 # === Welcome Messages ===
 WELCOME_MESSAGES: List[str] = [

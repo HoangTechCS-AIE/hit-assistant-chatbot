@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import os
 from dotenv import load_dotenv
+from src.config import JSON_DATA_PATH, CHROMA_DB_PATH
 
 load_dotenv()
 
@@ -17,7 +18,7 @@ with tab1:
     st.header("Thống kê dữ liệu")
     
     # Load JSON data
-    json_path = "data/haui_news.json"
+    json_path = JSON_DATA_PATH
     if os.path.exists(json_path):
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -109,7 +110,7 @@ with tab2:
 with tab3:
     st.header("Vector Database (Chroma)")
     
-    db_path = "./data/chroma_db"
+    db_path = CHROMA_DB_PATH
     
     if os.path.exists(db_path):
         try:

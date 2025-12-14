@@ -6,7 +6,7 @@ import streamlit as st
 import time
 import random
 from dotenv import load_dotenv
-from src.scraper import HaUIScraper
+from src.scraper import SICTAdvancedScraper
 from src.rag_engine import RAGSystem
 from src.config import (
     APP_TITLE, APP_ICON, APP_DESCRIPTION,
@@ -161,8 +161,11 @@ def render_sidebar():
                 status_text = st.empty()
                 
                 status_text.text("📥 Đang thu thập dữ liệu...")
-                scraper = HaUIScraper()
-                scraper.crawl()
+                scraper = SICTAdvancedScraper()
+                # Reset state for full refresh (don't skip any URLs)
+                scraper.state.reset()
+                scraper.crawl_all(parallel=True)
+                scraper.save_results()
                 progress_bar.progress(50)
                 
                 status_text.text("🔄 Đang xử lý và lưu vào database...")
@@ -170,13 +173,13 @@ def render_sidebar():
                 num_chunks = rag.ingest_data()
                 progress_bar.progress(100)
                 
-                status_text.text(f"✅ Hoàn tất! Đã tạo {num_chunks} chunks.")
+                status_text.text(f"✅ Hoàn tất! {len(scraper.articles)} bài viết, {num_chunks} chunks.")
                 time.sleep(2)
                 status_text.empty()
                 progress_bar.empty()
                 
                 st.cache_resource.clear()
-                st.success("Dữ liệu đã được cập nhật!")
+                st.success(f"Dữ liệu đã được cập nhật! ({len(scraper.articles)} bài viết)")
                 
             except Exception as e:
                 st.error(f"❌ Lỗi: {e}")
