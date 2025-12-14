@@ -114,11 +114,11 @@ with tab3:
     
     if os.path.exists(db_path):
         try:
-            from langchain_community.vectorstores import Chroma
-            from langchain_openai import OpenAIEmbeddings
+            from src.rag_engine import RAGSystem
             
-            embeddings = OpenAIEmbeddings()
-            vectorstore = Chroma(persist_directory=db_path, embedding_function=embeddings)
+            # Use same embedding as RAG system to avoid dimension mismatch
+            rag = RAGSystem()
+            vectorstore = rag.get_vectorstore()
             
             # Get collection info
             collection = vectorstore._collection
