@@ -189,36 +189,6 @@ hit-assistant-chatbot/
 
 ## 🔄 System Workflow
 
-```mermaid
-flowchart TB
-    User([👤 User]) --> FE[React Frontend<br/>localhost:3002]
-    
-    FE --> API[FastAPI Backend<br/>localhost:8001]
-    
-    API --> Memory[(SQLite<br/>Conversation Memory)]
-    API --> RAG[RAG Engine]
-    
-    RAG --> VectorDB[(ChromaDB<br/>Vector Store)]
-    RAG --> LLM[OpenAI GPT-4]
-    
-    VectorDB --> Embed[Embedding Model<br/>text-embedding-3-small]
-    
-    LLM --> RAG
-    RAG --> API
-    
-    Memory --> API
-    API --> FE
-    FE --> User
-    
-    style User fill:#10a37f,color:#fff
-    style FE fill:#61DAFB,color:#000
-    style API fill:#009688,color:#fff
-    style RAG fill:#FF6B6B,color:#fff
-    style LLM fill:#412991,color:#fff
-    style VectorDB fill:#FFA500,color:#fff
-    style Memory fill:#4CAF50,color:#fff
-```
-
 ### Data Flow
 1. **User Input** → Frontend React app
 2. **API Request** → FastAPI backend (`/api/chat/stream`)
