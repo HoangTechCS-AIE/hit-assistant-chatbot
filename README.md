@@ -1,76 +1,289 @@
-# HaUI AI Assistant 🏫
+# 🏫 HIT - RoiShaCoAy
 
-Trợ lý AI hỗ trợ tra cứu thông tin Đại học Công nghiệp Hà Nội (HaUI).
+**HIT - RoiShaCoAy** là hệ thống chatbot AI thông minh được xây dựng cho Trường Đại học Công nghiệp Hà Nội (HaUI), sử dụng công nghệ RAG (Retrieval-Augmented Generation) để cung cấp thông tin chính xác về trường học.
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)
-![LangChain](https://img.shields.io/badge/LangChain-0.1+-green.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB.svg)](https://reactjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
 
-## 🌟 Tính năng
+## ✨ Tính năng
 
-- **💬 Chat thông minh**: Hỏi đáp về HaUI với AI
-- **📚 Nguồn tham khảo**: Hiển thị nguồn cho mỗi câu trả lời
-- **🔄 Cập nhật dữ liệu**: Crawl tự động từ website HaUI
-- **💡 Gợi ý câu hỏi**: Quick prompts phổ biến
-- **🎨 Giao diện HaUI**: Branding chính thức của trường
+- 🤖 **RAG Engine** - Truy xuất và sinh câu trả lời thông minh từ cơ sở dữ liệu
+- 💬 **Conversation Memory** - Lưu trữ lịch sử hội thoại (ngắn hạn & dài hạn)
+- 🔄 **Streaming Response** - Hiển thị câu trả lời theo thời gian thực
+- 🌓 **Light/Dark Mode** - Giao diện hỗ trợ chế độ sáng/tối
+- 📚 **Source Citation** - Trích dẫn nguồn tham khảo cho mỗi câu trả lời
+- 🔍 **Domain Filtering** - Lọc câu hỏi theo phạm vi kiến thức
+- 📱 **Responsive UI** - Giao diện thân thiện trên mọi thiết bị
+- 🔗 **REST API** - API backend đầy đủ với FastAPI
+
+## 🛠 Tech Stack
+
+### Backend
+- **FastAPI** - REST API framework
+- **LangChain** - RAG orchestration
+- **OpenAI GPT-4** - Language model
+- **ChromaDB** - Vector database
+- **SQLite** - Conversation memory storage
+
+### Frontend
+- **React 18** - UI framework
+- **Vite** - Build tool
+- **TailwindCSS** - Styling
+- **Lucide React** - Icons
+- **React Markdown** - Markdown rendering
+
+### Additional
+- **Streamlit** - Alternative UI (legacy)
+- **BeautifulSoup4** - Web scraping
+- **Sentence Transformers** - Vietnamese embeddings (optional)
+
+## 📋 Yêu cầu hệ thống
+
+- Python 3.8+
+- Node.js 16+
+- npm hoặc yarn
+- OpenAI API key
 
 ## 🚀 Cài đặt
 
+### 1. Clone repository
 ```bash
-# 1. Clone repository
-cd haui-chatbot
+git clone https://github.com/yourusername/hit-assistant-chatbot.git
+cd hit-assistant-chatbot
+```
 
-# 2. Tạo virtual environment
-python3 -m venv venv
-source venv/bin/activate
+### 2. Thiết lập Backend
 
-# 3. Cài đặt dependencies
+#### Tạo môi trường ảo (khuyến nghị)
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# hoặc
+venv\Scripts\activate     # Windows
+```
+
+#### Cài đặt dependencies
+```bash
 pip install -r requirements.txt
-
-# 4. Cấu hình API key
-cp .env.example .env
-# Sửa file .env và thêm OPENAI_API_KEY
 ```
 
-## 📖 Sử dụng
+#### Cấu hình môi trường
+Tạo file `.env` từ template:
+```bash
+cp .env.example .env
+```
+
+Chỉnh sửa `.env` và thêm OpenAI API key:
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+### 3. Thiết lập Frontend
 
 ```bash
-# Chạy ứng dụng
+cd frontend
+npm install
+```
+
+### 4. Khởi tạo Database
+
+```bash
+# Thu thập dữ liệu từ website
+python -c "from src.scraper import SICTAdvancedScraper; scraper = SICTAdvancedScraper(); scraper.crawl_all(); scraper.save_results()"
+
+# Xây dựng vector database
+python -c "from src.rag_engine import RAGSystem; rag = RAGSystem(); rag.ingest_data()"
+```
+
+## 🎮 Sử dụng
+
+### Chạy Backend API
+```bash
+python api.py
+```
+API sẽ chạy tại: `http://localhost:8001`
+
+### Chạy Frontend (React)
+```bash
+cd frontend
+npm run dev
+```
+Frontend sẽ chạy tại: `http://localhost:3002`
+
+### Chạy Streamlit App (Legacy)
+```bash
 streamlit run app.py
+```
+Streamlit sẽ chạy tại: `http://localhost:8501`
 
-# Mở trình duyệt: http://localhost:8501
+### Chạy tất cả cùng lúc
+```bash
+python start_app.py
 ```
 
-## 🏗️ Kiến trúc
+## 📚 API Documentation
+
+### Endpoints chính
+
+#### Chat
+```http
+POST /api/chat
+Content-Type: application/json
+
+{
+  "question": "SICT có những ngành nào?",
+  "conversation_id": "uuid" (optional)
+}
+```
+
+#### Streaming Chat
+```http
+POST /api/chat/stream
+Content-Type: application/json
+
+{
+  "question": "Học phí năm 2025 là bao nhiêu?"
+}
+```
+
+#### Conversations
+```http
+GET /api/conversations              # Lấy danh sách
+GET /api/conversations/{id}        # Lấy chi tiết
+DELETE /api/conversations/{id}     # Xóa conversation
+POST /api/conversations/new        # Tạo mới
+```
+
+### API Docs (Swagger)
+Truy cập: `http://localhost:8001/docs`
+
+## 📁 Cấu trúc Project
 
 ```
-haui-chatbot/
-├── app.py                 # Streamlit UI
-├── src/
-│   ├── config.py         # Cấu hình tập trung
-│   ├── scraper.py        # Web scraper cho HaUI
-│   └── rag_engine.py     # RAG với LangChain
-├── data/
-│   ├── haui_news.json    # Dữ liệu crawl
-│   └── chroma_db/        # Vector database
-└── .streamlit/
-    └── config.toml       # Theme Streamlit
+hit-assistant-chatbot/
+├── backend/              # FastAPI backend (legacy structure)
+├── frontend/            # React frontend
+│   ├── src/
+│   │   ├── components/  # React components
+│   │   ├── services/    # API services
+│   │   └── App.jsx      # Main app
+│   └── package.json
+├── src/                 # Core modules
+│   ├── rag_engine.py    # RAG system
+│   ├── memory.py        # Conversation memory
+│   ├── scraper.py       # Web scraper
+│   └── config.py        # Configuration
+├── data/                # Data storage
+│   ├── sict_haui_data.json
+│   ├── chroma_db/       # Vector database
+│   └── memory.db        # SQLite database
+├── api.py               # FastAPI main
+├── app.py               # Streamlit app
+├── requirements.txt     # Python dependencies
+└── README.md
 ```
 
-## 🛠️ Công nghệ
+```
 
-| Thành phần | Công nghệ |
-|------------|-----------|
-| Frontend | Streamlit |
-| LLM | OpenAI GPT-3.5 |
-| Embeddings | OpenAI Ada-002 |
-| Vector DB | ChromaDB |
-| Framework | LangChain |
+## 🔄 System Workflow
 
-## 👥 Tác giả
+```mermaid
+flowchart TB
+    User([👤 User]) --> FE[React Frontend<br/>localhost:3002]
+    
+    FE --> API[FastAPI Backend<br/>localhost:8001]
+    
+    API --> Memory[(SQLite<br/>Conversation Memory)]
+    API --> RAG[RAG Engine]
+    
+    RAG --> VectorDB[(ChromaDB<br/>Vector Store)]
+    RAG --> LLM[OpenAI GPT-4]
+    
+    VectorDB --> Embed[Embedding Model<br/>text-embedding-3-small]
+    
+    LLM --> RAG
+    RAG --> API
+    
+    Memory --> API
+    API --> FE
+    FE --> User
+    
+    style User fill:#10a37f,color:#fff
+    style FE fill:#61DAFB,color:#000
+    style API fill:#009688,color:#fff
+    style RAG fill:#FF6B6B,color:#fff
+    style LLM fill:#412991,color:#fff
+    style VectorDB fill:#FFA500,color:#fff
+    style Memory fill:#4CAF50,color:#fff
+```
 
-Đại học Công nghiệp Hà Nội - HaUI
+### Data Flow
+1. **User Input** → Frontend React app
+2. **API Request** → FastAPI backend (`/api/chat/stream`)
+3. **Memory Check** → Load conversation history from SQLite
+4. **RAG Retrieval** → Query ChromaDB for relevant documents
+5. **LLM Generation** → OpenAI GPT-4 generates response with context
+6. **Streaming Response** → Server-Sent Events back to frontend
+7. **Memory Save** → Store conversation in SQLite
+8. **UI Update** → Display streaming response with sources
 
-## 📄 License
+## 🔧 Configuration
 
-MIT License
+
+Chỉnh sửa `src/config.py` để tùy chỉnh:
+- Model LLM
+- Chunk size & overlap
+- Retriever settings
+- System prompt
+- Embedding model
+
+## 🧪 Testing
+
+### Test scraper
+```bash
+python -c "from src.scraper import SICTAdvancedScraper; scraper = SICTAdvancedScraper(); scraper.crawl_all(max_pages=5)"
+```
+
+### Test RAG system
+```bash
+python -c "from src.rag_engine import RAGSystem; rag = RAGSystem(); print(rag.answer('SICT có những ngành nào?'))"
+```
+
+### Test API
+```bash
+curl -X POST http://localhost:8001/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Thông tin tuyển sinh"}'
+```
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Tạo feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Tạo Pull Request
+
+## 📝 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+## 👥 Authors
+
+- **HoangTechCS-AIE** - [GitHub](https://github.com/HoangTechCS-AIE)
+
+## 🙏 Acknowledgments
+
+- [LangChain](https://langchain.com/) - RAG framework
+- [OpenAI](https://openai.com/) - GPT models
+- [Hanoi University of Industry](https://www.haui.edu.vn/)
+
+## 📞 Contact
+
+Project Link: [https://github.com/HoangTechCS-AIE/hit-assistant-chatbot](https://github.com/HoangTechCS-AIE/hit-assistant-chatbot)
+
+---
+
+Made with ❤️ for HaUI

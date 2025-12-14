@@ -1,6 +1,6 @@
 """
 HaUI AI Assistant - Main Streamlit Application
-A RAG-based chatbot for Hanoi University of Industry.
+A RAG-based chatbot for Hanoi University of Industry with conversation memory.
 """
 import streamlit as st
 import time
@@ -8,6 +8,7 @@ import random
 from dotenv import load_dotenv
 from src.scraper import SICTAdvancedScraper
 from src.rag_engine import RAGSystem
+from src.memory import get_memory_manager, MemoryManager
 from src.config import (
     APP_TITLE, APP_ICON, APP_DESCRIPTION,
     HAUI_PRIMARY_COLOR, HAUI_LOGO_URL,
@@ -16,12 +17,12 @@ from src.config import (
 
 load_dotenv()
 
+
 # === Custom CSS ===
 def inject_custom_css():
     """Inject custom CSS for HaUI branding."""
     st.markdown(f"""
     <style>
-        /* Header styling */
         .main-header {{
             display: flex;
             align-items: center;
@@ -30,31 +31,9 @@ def inject_custom_css():
             border-bottom: 3px solid {HAUI_PRIMARY_COLOR};
             margin-bottom: 20px;
         }}
-        .main-header img {{
-            height: 60px;
-        }}
-        .main-header h1 {{
-            color: {HAUI_PRIMARY_COLOR};
-            margin: 0;
-            font-size: 1.8rem;
-        }}
+        .main-header img {{ height: 60px; }}
+        .main-header h1 {{ color: {HAUI_PRIMARY_COLOR}; margin: 0; font-size: 1.8rem; }}
         
-        /* Quick prompt buttons */
-        .quick-prompt {{
-            background-color: #f0f2f6;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            padding: 8px 16px;
-            margin: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }}
-        .quick-prompt:hover {{
-            background-color: {HAUI_PRIMARY_COLOR};
-            color: white;
-        }}
-        
-        /* Source citation styling */
         .source-box {{
             background-color: #f8f9fa;
             border-left: 4px solid {HAUI_PRIMARY_COLOR};
@@ -62,53 +41,28 @@ def inject_custom_css():
             margin: 10px 0;
             border-radius: 0 8px 8px 0;
         }}
-        .source-box a {{
-            color: {HAUI_PRIMARY_COLOR};
-            text-decoration: none;
-        }}
-        .source-box a:hover {{
-            text-decoration: underline;
-        }}
+        .source-box a {{ color: {HAUI_PRIMARY_COLOR}; text-decoration: none; }}
         
-        /* Chat message avatars */
-        .stChatMessage [data-testid="chatAvatarIcon-user"] {{
-            background-color: {HAUI_PRIMARY_COLOR} !important;
+        .conversation-item {{
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
         }}
-        .stChatMessage [data-testid="chatAvatarIcon-assistant"] {{
-            background-color: #FFD700 !important;
+        .conversation-item:hover {{
+            background-color: #f0f2f6;
         }}
-        
-        /* Footer */
-        .footer {{
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
+        .conversation-item.active {{
             background-color: {HAUI_PRIMARY_COLOR};
             color: white;
-            text-align: center;
-            padding: 8px;
-            font-size: 0.8rem;
-        }}
-        
-        /* Feedback buttons */
-        .feedback-btn {{
-            background: none;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 5px 10px;
-            cursor: pointer;
-            margin: 2px;
-        }}
-        .feedback-btn:hover {{
-            background-color: #f0f2f6;
         }}
     </style>
     """, unsafe_allow_html=True)
 
 
 def render_header():
-    """Render the main header with HaUI branding."""
+    """Render the main header."""
     st.markdown(f"""
     <div class="main-header">
         <img src="{HAUI_LOGO_URL}" alt="HaUI Logo" onerror="this.style.display='none'">
@@ -118,18 +72,6 @@ def render_header():
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-
-def render_quick_prompts():
-    """Render quick prompt suggestion buttons."""
-    st.markdown("**💡 Gợi ý câu hỏi:**")
-    cols = st.columns(3)
-    for idx, prompt in enumerate(QUICK_PROMPTS):
-        col_idx = idx % 3
-        with cols[col_idx]:
-            if st.button(prompt, key=f"quick_{idx}", use_container_width=True):
-                return prompt
-    return None
 
 
 def render_sources(sources):
@@ -148,75 +90,97 @@ def render_sources(sources):
             """, unsafe_allow_html=True)
 
 
-def render_sidebar():
-    """Render the sidebar with settings and controls."""
+def render_sidebar(memory: MemoryManager):
+    """Render sidebar with conversation history."""
     with st.sidebar:
         st.image(HAUI_LOGO_URL, width=150)
-        st.header("⚙️ Cài đặt")
         
-        # Data update button
-        if st.button("🔄 Cập nhật Dữ liệu", use_container_width=True):
-            try:
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                status_text.text("📥 Đang thu thập dữ liệu...")
-                scraper = SICTAdvancedScraper()
-                # Reset state for full refresh (don't skip any URLs)
-                scraper.state.reset()
-                scraper.crawl_all(parallel=True)
-                scraper.save_results()
-                progress_bar.progress(50)
-                
-                status_text.text("🔄 Đang xử lý và lưu vào database...")
-                rag = RAGSystem()
-                num_chunks = rag.ingest_data()
-                progress_bar.progress(100)
-                
-                status_text.text(f"✅ Hoàn tất! {len(scraper.articles)} bài viết, {num_chunks} chunks.")
-                time.sleep(2)
-                status_text.empty()
-                progress_bar.empty()
-                
-                st.cache_resource.clear()
-                st.success(f"Dữ liệu đã được cập nhật! ({len(scraper.articles)} bài viết)")
-                
-            except Exception as e:
-                st.error(f"❌ Lỗi: {e}")
-        
-        st.divider()
-        
-        # Clear chat button
-        if st.button("🗑️ Xóa lịch sử chat", use_container_width=True):
+        # === New Conversation Button ===
+        if st.button("➕ Cuộc trò chuyện mới", use_container_width=True, type="primary"):
+            # Save current conversation first
+            if memory.current_conversation and memory.current_conversation.messages:
+                memory.save_conversation()
+            
+            # Start new conversation
+            memory.start_conversation()
             st.session_state.messages = []
             st.session_state.sources_history = []
+            st.session_state.current_conv_id = memory.current_conversation.id
             st.rerun()
         
         st.divider()
         
-        # Statistics
-        st.subheader("📊 Thống kê")
-        if "messages" in st.session_state:
-            user_msgs = len([m for m in st.session_state.messages if m["role"] == "user"])
-            st.metric("Số câu hỏi", user_msgs)
+        # === Conversation History ===
+        st.subheader("💬 Lịch sử trò chuyện")
+        
+        conversations = memory.get_conversation_list(limit=15)
+        
+        if conversations:
+            for conv in conversations:
+                is_active = (st.session_state.get("current_conv_id") == conv["id"])
+                
+                col1, col2 = st.columns([5, 1])
+                with col1:
+                    if st.button(
+                        f"{'📌 ' if is_active else ''}{conv['title'][:30]}...",
+                        key=f"conv_{conv['id']}",
+                        use_container_width=True,
+                        disabled=is_active
+                    ):
+                        # Save current before switching
+                        if memory.current_conversation:
+                            memory.save_conversation()
+                        
+                        # Load selected conversation
+                        memory.load_conversation(conv["id"])
+                        st.session_state.current_conv_id = conv["id"]
+                        st.session_state.messages = [
+                            {"role": m.role, "content": m.content}
+                            for m in memory.current_conversation.messages
+                        ]
+                        st.session_state.sources_history = []
+                        st.rerun()
+                
+                with col2:
+                    if st.button("🗑️", key=f"del_{conv['id']}", help="Xóa"):
+                        memory.delete_conversation(conv["id"])
+                        if is_active:
+                            memory.start_conversation()
+                            st.session_state.messages = []
+                            st.session_state.current_conv_id = memory.current_conversation.id
+                        st.rerun()
+        else:
+            st.info("Chưa có lịch sử trò chuyện")
         
         st.divider()
         
-        # About section
-        with st.expander("ℹ️ Về ứng dụng"):
-            st.markdown("""
-            **HaUI AI Assistant** là chatbot hỗ trợ tra cứu thông tin về Đại học Công nghiệp Hà Nội.
+        # === Settings ===
+        with st.expander("⚙️ Cài đặt"):
+            if st.button("🔄 Cập nhật Dữ liệu", use_container_width=True):
+                try:
+                    with st.spinner("Đang cập nhật..."):
+                        scraper = SICTAdvancedScraper()
+                        scraper.state.reset()
+                        scraper.crawl_all(parallel=True)
+                        scraper.save_results()
+                        
+                        rag = RAGSystem()
+                        num_chunks = rag.ingest_data()
+                        
+                        st.cache_resource.clear()
+                        st.success(f"✅ Đã cập nhật {len(scraper.articles)} bài viết!")
+                except Exception as e:
+                    st.error(f"❌ Lỗi: {e}")
             
-            - 🔍 Tìm kiếm thông tin tuyển sinh
-            - 📚 Tra cứu ngành đào tạo
-            - 📰 Cập nhật tin tức mới nhất
-            
-            **Phiên bản:** 2.0
-            """)
+            if st.button("🧹 Xóa toàn bộ lịch sử", use_container_width=True):
+                if st.checkbox("Xác nhận xóa tất cả"):
+                    memory.clear_all()
+                    st.session_state.messages = []
+                    st.rerun()
 
 
 def get_rag_system():
-    """Get or create cached RAG system."""
+    """Get cached RAG system."""
     @st.cache_resource
     def _get_rag():
         return RAGSystem()
@@ -234,113 +198,108 @@ def main():
     
     inject_custom_css()
     render_header()
-    render_sidebar()
+    
+    # Initialize memory manager
+    memory = get_memory_manager()
     
     # Initialize session state
     if "messages" not in st.session_state:
         st.session_state.messages = []
-        # Add welcome message
-        welcome_msg = random.choice(WELCOME_MESSAGES)
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": welcome_msg
-        })
-    
+        
     if "sources_history" not in st.session_state:
         st.session_state.sources_history = []
     
-    # Main content area
-    col1, col2 = st.columns([3, 1])
+    if "current_conv_id" not in st.session_state:
+        # Start or restore conversation
+        if memory.current_conversation is None:
+            memory.start_conversation()
+        st.session_state.current_conv_id = memory.current_conversation.id
+        
+        # Add welcome message
+        if not st.session_state.messages:
+            welcome = random.choice(WELCOME_MESSAGES)
+            st.session_state.messages.append({"role": "assistant", "content": welcome})
+            memory.add_message("assistant", welcome)
     
-    with col1:
-        # Quick prompts
-        selected_prompt = render_quick_prompts()
-        
-        st.divider()
-        
-        # Chat history
-        for idx, message in enumerate(st.session_state.messages):
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-                
-                # Show sources if available
-                if message["role"] == "assistant" and idx < len(st.session_state.sources_history):
-                    sources = st.session_state.sources_history[idx]
-                    if sources:
-                        render_sources(sources)
-                
-                # Feedback buttons for assistant messages
-                if message["role"] == "assistant" and idx > 0:
-                    col_a, col_b, col_c = st.columns([1, 1, 10])
-                    with col_a:
-                        if st.button("👍", key=f"up_{idx}"):
-                            st.toast("Cảm ơn phản hồi của bạn!")
-                    with col_b:
-                        if st.button("👎", key=f"down_{idx}"):
-                            st.toast("Cảm ơn! Chúng tôi sẽ cải thiện.")
-        
-        # Chat input
-        prompt = st.chat_input("Bạn muốn hỏi gì về HaUI?")
-        
-        # Handle quick prompt selection
-        if selected_prompt:
-            prompt = selected_prompt
-        
-        if prompt:
-            # Add user message
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+    render_sidebar(memory)
+    
+    # === Main Chat Area ===
+    
+    # Quick prompts
+    st.markdown("**💡 Gợi ý câu hỏi:**")
+    cols = st.columns(3)
+    selected_prompt = None
+    for idx, prompt in enumerate(QUICK_PROMPTS):
+        with cols[idx % 3]:
+            if st.button(prompt, key=f"quick_{idx}", use_container_width=True):
+                selected_prompt = prompt
+    
+    st.divider()
+    
+    # Display chat messages
+    for idx, message in enumerate(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
             
-            # Generate response
-            with st.chat_message("assistant"):
-                try:
-                    rag = get_rag_system()
-                    message_placeholder = st.empty()
-                    full_response = ""
-                    sources = []
-                    
-                    # Stream response
-                    with st.spinner("🤔 Đang suy nghĩ..."):
-                        for chunk in rag.stream_answer_with_sources(
-                            prompt, 
-                            st.session_state.messages[:-1]  # Exclude current question
-                        ):
-                            if chunk["type"] == "token":
-                                full_response += chunk["content"]
-                                message_placeholder.markdown(full_response + "▌")
-                            elif chunk["type"] == "sources":
-                                sources = chunk["content"]
-                    
-                    message_placeholder.markdown(full_response)
-                    
-                    # Store message and sources
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": full_response
-                    })
-                    st.session_state.sources_history.append(sources)
-                    
-                    # Render sources
+            # Show sources for assistant messages
+            if message["role"] == "assistant" and idx < len(st.session_state.sources_history):
+                sources = st.session_state.sources_history[idx]
+                if sources:
                     render_sources(sources)
-                    
-                except Exception as e:
-                    error_msg = f"❌ Xin lỗi, đã xảy ra lỗi: {str(e)}"
-                    st.error(error_msg)
-                    
-                    if "not found" in str(e).lower():
-                        st.info("💡 Hãy nhấn '🔄 Cập nhật Dữ liệu' ở sidebar để khởi tạo database.")
-                    
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": error_msg
-                    })
-                    st.session_state.sources_history.append([])
     
-    with col2:
-        # News highlights sidebar
-        st.markdown("### 📰 Tin mới nhất")
-        st.info("Tính năng đang phát triển...")
+    # Chat input
+    prompt = st.chat_input("Bạn muốn hỏi gì về HaUI?")
+    if selected_prompt:
+        prompt = selected_prompt
+    
+    if prompt:
+        # Add user message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        memory.add_message("user", prompt)
+        
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # Generate response
+        with st.chat_message("assistant"):
+            try:
+                rag = get_rag_system()
+                message_placeholder = st.empty()
+                full_response = ""
+                sources = []
+                
+                # Get context from memory
+                chat_history = memory.get_context(max_turns=5)
+                
+                with st.spinner("🤔 Đang suy nghĩ..."):
+                    for chunk in rag.stream_answer_with_sources(prompt, chat_history):
+                        if chunk["type"] == "token":
+                            full_response += chunk["content"]
+                            message_placeholder.markdown(full_response + "▌")
+                        elif chunk["type"] == "sources":
+                            sources = chunk["content"]
+                
+                message_placeholder.markdown(full_response)
+                
+                # Store message
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                st.session_state.sources_history.append(sources)
+                memory.add_message("assistant", full_response)
+                
+                # Auto-save conversation
+                memory.save_conversation()
+                
+                render_sources(sources)
+                
+            except Exception as e:
+                error_msg = f"❌ Lỗi: {str(e)}"
+                st.error(error_msg)
+                
+                if "not found" in str(e).lower():
+                    st.info("💡 Nhấn '🔄 Cập nhật Dữ liệu' ở sidebar.")
+                
+                st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                st.session_state.sources_history.append([])
 
 
 if __name__ == "__main__":
